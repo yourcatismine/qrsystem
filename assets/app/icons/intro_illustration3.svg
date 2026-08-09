@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 250" width="300" height="250">
+  <!-- Background Elements -->
+  <path d="M50 150 Q 150 220 250 150 L 250 250 L 50 250 Z" fill="#E8EEF5" />
+  
+  <!-- Shield Graphic -->
+  <path d="M150 40 L 90 60 V 120 C 90 170, 140 210, 150 220 C 160 210, 210 170, 210 120 V 60 Z" fill="#4CAF50" />
+  <path d="M150 40 L 150 220 C 160 210, 210 170, 210 120 V 60 Z" fill="#388E3C" />
+  
+  <!-- Checkmark -->
+  <path d="M125 125 L 145 145 L 180 95" fill="none" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" />
+  
+  <!-- Floating stars -->
+  <path d="M70 70 L 75 80 L 85 85 L 75 90 L 70 100 L 65 90 L 55 85 L 65 80 Z" fill="#F4D03F" />
+  <path d="M240 100 L 245 105 L 250 105 L 247 110 L 248 115 L 244 112 L 240 115 L 241 110 L 238 105 L 243 105 Z" fill="#F4D03F" />
+</svg>
