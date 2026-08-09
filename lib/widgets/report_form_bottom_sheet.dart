@@ -4,8 +4,10 @@ import 'package:provider/provider.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/report.dart';
 import '../providers/report_provider.dart';
+import '../widgets/custom_svg_loader.dart';
 
 class ReportFormBottomSheet extends StatefulWidget {
   final String poleId;
@@ -25,6 +27,7 @@ class _ReportFormBottomSheetState extends State<ReportFormBottomSheet> {
 
   LatLng? _currentPosition;
   bool _isLoadingLocation = true;
+  bool _isSubmitting = false;
 
   @override
   void initState() {
@@ -74,27 +77,79 @@ class _ReportFormBottomSheetState extends State<ReportFormBottomSheet> {
     });
   }
 
-  void _submitReport() {
+  Future<void> _submitReport() async {
     if (_formKey.currentState!.validate()) {
+      setState(() { _isSubmitting = true; });
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) {
+        setState(() { _isSubmitting = false; });
+        showGeneralDialog(
+          context: context,
+          barrierDismissible: true,
+          barrierLabel: 'Dismiss',
+          transitionDuration: const Duration(milliseconds: 300),
+          pageBuilder: (context, animation, secondaryAnimation) => const SizedBox(),
+          transitionBuilder: (context, animation, secondaryAnimation, child) {
+            return ScaleTransition(
+              scale: CurvedAnimation(parent: animation, curve: Curves.easeOutBack),
+              child: FadeTransition(
+                opacity: animation,
+                child: AlertDialog(
+                  title: const Text('Authentication Required'),
+                  content: const Text('You must be logged in to submit a report. Please log in or sign up to continue.'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('OK'),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+        return;
+      }
+
       String finalDescription = _descriptionController.text;
       if (_selectedIssueType == IssueType.other && _otherIssueController.text.isNotEmpty) {
         finalDescription = 'Other Issue: ${_otherIssueController.text}\n\n$finalDescription'.trim();
       }
 
       final report = Report(
+        userId: user.id,
         poleId: widget.poleId,
         issueType: _selectedIssueType,
         description: finalDescription,
         location: _locationController.text,
       );
 
-      Provider.of<ReportProvider>(context, listen: false).addReport(report);
-
-      Navigator.pop(context); // Close the bottom sheet
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Report submitted successfully!')),
-      );
+      try {
+        await Provider.of<ReportProvider>(context, listen: false).addReport(report);
+        if (mounted) {
+          Navigator.pop(context); // Close the bottom sheet
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Report submitted successfully!')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() { _isSubmitting = false; });
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Error Submitting Report'),
+              content: Text(e.toString()),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+        }
+      }
     }
   }
 
@@ -252,7 +307,7 @@ class _ReportFormBottomSheetState extends State<ReportFormBottomSheet> {
                       children: [
                         TileLayer(
                           urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                          userAgentPackageName: 'com.example.qrsystem',
+                          userAgentPackageName: 'com.diego.qrsystem',
                         ),
                         MarkerLayer(
                           markers: [
@@ -288,14 +343,21 @@ class _ReportFormBottomSheetState extends State<ReportFormBottomSheet> {
 
               // Submit Button
               ElevatedButton(
-                onPressed: _submitReport,
+                onPressed: _isSubmitting ? null : _submitReport,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green.shade700,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                  disabledBackgroundColor: Colors.green.shade300,
                 ),
-                child: const Text('Submit Report', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                child: _isSubmitting 
+                    ? const SizedBox(
+                        height: 24, 
+                        width: 24, 
+                        child: CustomSvgLoader(size: 24)
+                      )
+                    : const Text('Submit Report', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               ),
             ],
           ),

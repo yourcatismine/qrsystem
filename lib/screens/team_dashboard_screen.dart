@@ -67,9 +67,9 @@ class TeamDashboardScreen extends StatelessWidget {
         ),
       ],
       onChanged: (newStatus) {
-        if (newStatus != null) {
+        if (newStatus != null && report.id != null) {
           Provider.of<ReportProvider>(context, listen: false)
-              .updateReportStatus(report.id, newStatus);
+              .updateReportStatus(report.id!, newStatus);
         }
       },
     );

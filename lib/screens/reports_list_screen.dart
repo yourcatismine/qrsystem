@@ -4,13 +4,14 @@ import '../models/report.dart';
 import '../providers/report_provider.dart';
 
 class ReportsListScreen extends StatelessWidget {
-  const ReportsListScreen({super.key});
+  final bool isManagement;
+  const ReportsListScreen({super.key, this.isManagement = false});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Reports'),
+        title: Text(isManagement ? 'All Reports' : 'My Reports'),
       ),
       body: Consumer<ReportProvider>(
         builder: (context, provider, child) {
@@ -60,6 +61,14 @@ class ReportsListScreen extends StatelessWidget {
       case ReportStatus.resolved:
         color = Colors.green;
         text = 'Resolved';
+        break;
+      case ReportStatus.approved:
+        color = Colors.green;
+        text = 'Approved';
+        break;
+      case ReportStatus.declined:
+        color = Colors.red;
+        text = 'Declined';
         break;
     }
 

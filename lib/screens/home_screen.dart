@@ -9,6 +9,8 @@ import '../widgets/report_form_bottom_sheet.dart';
 import 'intro_screen.dart';
 import 'login_screen.dart';
 import 'profile_screen.dart';
+import '../widgets/custom_svg_loader.dart';
+import '../widgets/management_reports_section.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -19,6 +21,47 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
+  String? _userRole;
+  bool _isLoadingRole = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserRole();
+  }
+
+  Future<void> _fetchUserRole() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user != null) {
+      try {
+        final data = await Supabase.instance.client
+            .from('users')
+            .select('role')
+            .eq('id', user.id)
+            .single(); // Using single() so it throws an error if RLS blocks it
+            
+        if (mounted) {
+          setState(() {
+            _userRole = data['role'] as String?;
+            _isLoadingRole = false;
+          });
+        }
+      } catch (e) {
+        print('Error fetching user role: $e');
+        if (mounted) {
+          setState(() {
+            _isLoadingRole = false;
+          });
+        }
+      }
+    } else {
+      if (mounted) {
+        setState(() {
+          _isLoadingRole = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -103,7 +146,9 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         ),
       ),
-      body: Stack(
+      body: _isLoadingRole 
+        ? const CustomSvgLoader()
+        : Stack(
         children: [
           // Background Image with fading gradient overlay
           Positioned.fill(
@@ -126,7 +171,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Colors.white.withOpacity(0.5), // Semi-transparent white
                       Colors.white,                  // Solid white at the bottom
                     ],
-                    stops: const [0.0, 0.4, 0.7],
+                    stops: const [0.0, 0.7, 1.0], // Pushed gradient down so short content doesn't cause a white void
                   ),
                 ),
               ),
@@ -145,10 +190,19 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 20),
               _buildActionGrid(context),
               const SizedBox(height: 20),
-              _buildPromoBanner(),
-              const SizedBox(height: 24),
-              _buildFeaturedServices(),
-              const SizedBox(height: 40), // extra padding for bottom scroll
+              
+              if (_userRole == 'management') ...[
+                const ManagementReportsSection(),
+                const SizedBox(height: 40),
+              ],
+
+              // Only show these sections to non-management users (e.g. regular users)
+              if (_userRole != 'management') ...[
+                _buildPromoBanner(),
+                const SizedBox(height: 24),
+                _buildFeaturedServices(),
+                const SizedBox(height: 40), // extra padding for bottom scroll
+              ],
             ],
           ),
         ),
@@ -409,7 +463,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildActionGrid(BuildContext context) {
-    final actions = [
+    var actions = [
       {
         'svg': 'assets/icons/scan_qr.svg',
         'label': 'Scan QR',
@@ -439,15 +493,19 @@ class _HomeScreenState extends State<HomeScreen> {
       },
     ];
 
+    if (_userRole == 'management') {
+      actions.removeWhere((action) => action['label'] == 'Scan QR' || action['label'] == 'My Reports');
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12.0),
       child: GridView.builder(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         itemCount: actions.length,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 5,
-          childAspectRatio: 0.8,
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: actions.length < 5 ? actions.length : 5,
+          childAspectRatio: actions.length < 5 ? 1.2 : 0.8, // Adjust aspect ratio so they don't get too tall when stretched
           mainAxisSpacing: 16,
         ),
         itemBuilder: (context, index) {

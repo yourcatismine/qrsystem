@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'login_screen.dart';
 import 'home_screen.dart';
+import 'mpin_lock_screen.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -87,6 +88,7 @@ class _SignupScreenState extends State<SignupScreen> {
             'suffix': _selectedSuffix,
             'phone': _phoneController.text,
             'mpin': _mpinController.text,
+            'role': 'user', // Set default role to 'user'
           },
         );
 
@@ -120,10 +122,10 @@ class _SignupScreenState extends State<SignupScreen> {
             ),
           );
           
-          // Navigate to Home Screen and clear the back stack
+          // Navigate to MpinLockScreen and clear the back stack
           Navigator.pushAndRemoveUntil(
             context,
-            MaterialPageRoute(builder: (context) => const HomeScreen()),
+            MaterialPageRoute(builder: (context) => const MpinLockScreen()),
             (Route<dynamic> route) => false,
           );
         }
@@ -446,7 +448,7 @@ class _SignupScreenState extends State<SignupScreen> {
             // Login Button
             OutlinedButton(
               onPressed: () {
-                Navigator.push(
+                Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(builder: (context) => const LoginScreen()),
                 );

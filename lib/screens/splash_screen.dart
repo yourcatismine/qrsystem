@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'home_screen.dart';
+import 'mpin_lock_screen.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:math';
 
 class SplashScreen extends StatefulWidget {
@@ -69,7 +71,11 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
             ),
           );
         },
-        child: _showHome ? const HomeScreen(key: ValueKey('home')) : _buildSplash(),
+        child: _showHome 
+            ? (Supabase.instance.client.auth.currentSession != null
+                ? const MpinLockScreen(key: ValueKey('mpin'))
+                : const HomeScreen(key: ValueKey('home')))
+            : _buildSplash(),
       ),
     );
   }
