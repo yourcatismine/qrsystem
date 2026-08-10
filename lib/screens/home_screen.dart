@@ -4,10 +4,10 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'scanner_screen.dart';
 import 'reports_list_screen.dart';
-import 'team_dashboard_screen.dart';
+import 'manage_qr_screen.dart';
 import '../widgets/report_form_bottom_sheet.dart';
 import 'intro_screen.dart';
-import 'login_screen.dart';
+
 import 'profile_screen.dart';
 import '../widgets/custom_svg_loader.dart';
 import '../widgets/management_reports_section.dart';
@@ -47,7 +47,7 @@ class _HomeScreenState extends State<HomeScreen> {
           });
         }
       } catch (e) {
-        print('Error fetching user role: $e');
+        debugPrint('Error fetching user role: $e');
         if (mounted) {
           setState(() {
             _isLoadingRole = false;
@@ -83,7 +83,7 @@ class _HomeScreenState extends State<HomeScreen> {
               // Give the scanner screen's exit animation time to finish
               await Future.delayed(const Duration(milliseconds: 300));
               if (context.mounted) {
-                print("Showing bottom sheet for poleId: $result");
+                debugPrint("Showing bottom sheet for poleId: $result");
                 showModalBottomSheet(
                   context: context,
                   isScrollControlled: true,
@@ -141,7 +141,11 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             Expanded(child: _buildBottomNavItem("assets/icons/nav_mobile_id.svg", "Mobile ID", 2)),
-            Expanded(child: _buildBottomNavItem("assets/icons/nav_account.svg", "Account", 3)),
+            Expanded(
+              child: _userRole == 'management'
+                ? _buildBottomNavItem("assets/icons/manage_qr.svg", "Manage QR", 3)
+                : _buildBottomNavItem("assets/icons/nav_account.svg", "Account", 3),
+            ),
           ],
         ),
         ),
@@ -219,6 +223,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return InkWell(
       onTap: () {
+        if (label == 'Manage QR') {
+          Navigator.push(context, MaterialPageRoute(builder: (context) => const ManageQrScreen()));
+          return;
+        } else if (label == 'Account') {
+          Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfileScreen()));
+          return;
+        }
         setState(() {
           _selectedIndex = index;
         });

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../models/saved_account.dart';
+import '../utils/account_manager.dart';
 import 'login_screen.dart';
-import 'home_screen.dart';
+
 import 'mpin_lock_screen.dart';
 
 class SignupScreen extends StatefulWidget {
@@ -98,6 +101,17 @@ class _SignupScreenState extends State<SignupScreen> {
           password: _mpinController.text,
         );
 
+        final user = supabase.auth.currentUser;
+        if (user != null) {
+          await AccountManager.saveAccount(SavedAccount(
+            id: user.id,
+            email: _emailController.text,
+            firstName: _firstNameController.text,
+            lastName: _lastNameController.text,
+            avatarUrl: null,
+          ));
+        }
+
         if (mounted) {
           // Success! Show a stylish floating toast
           ScaffoldMessenger.of(context).showSnackBar(
@@ -163,10 +177,13 @@ class _SignupScreenState extends State<SignupScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black87),
-          onPressed: _isLoading ? null : _previousStep,
-        ),
+        automaticallyImplyLeading: false,
+        leading: _currentStep > 0
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black87),
+                onPressed: _isLoading ? null : _previousStep,
+              )
+            : null,
       ),
       body: SafeArea(
         child: Column(

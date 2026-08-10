@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'home_screen.dart';
+import '../models/saved_account.dart';
+import '../utils/account_manager.dart';
+import 'package:pinput/pinput.dart';
+
 import 'mpin_lock_screen.dart';
 import 'signup_screen.dart';
 
@@ -40,6 +44,18 @@ class _LoginScreenState extends State<LoginScreen> {
         password: mpin,
       );
 
+      final user = supabase.auth.currentUser;
+      if (user != null) {
+        final metadata = user.userMetadata ?? {};
+        await AccountManager.saveAccount(SavedAccount(
+          id: user.id,
+          email: user.email ?? email,
+          firstName: metadata['first_name'] ?? '',
+          lastName: metadata['last_name'] ?? '',
+          avatarUrl: metadata['avatar_url'],
+        ));
+      }
+
       if (mounted) {
         Navigator.pushAndRemoveUntil(
           context,
@@ -73,10 +89,7 @@ class _LoginScreenState extends State<LoginScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black87),
-          onPressed: () => Navigator.pop(context),
-        ),
+        automaticallyImplyLeading: false, // Hide back button completely
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -141,28 +154,36 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 16),
               
               // MPIN Field
-              Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: _errorMessage != null ? Colors.red.shade400 : Colors.grey.shade300,
+              Pinput(
+                controller: _mpinController,
+                length: 6,
+                obscureText: true,
+                keyboardType: TextInputType.number,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                onChanged: (val) {
+                  if (_errorMessage != null) setState(() => _errorMessage = null);
+                },
+                defaultPinTheme: PinTheme(
+                  width: 50,
+                  height: 56,
+                  textStyle: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: _errorMessage != null ? Colors.red.shade400 : Colors.grey.shade300,
+                    ),
                   ),
                 ),
-                child: TextField(
-                  controller: _mpinController,
-                  keyboardType: TextInputType.number,
-                  obscureText: true,
-                  maxLength: 6,
-                  decoration: InputDecoration(
-                    hintText: 'MPIN',
-                    counterText: '',
-                    prefixIcon: Icon(Icons.lock_outline, color: _errorMessage != null ? Colors.red.shade400 : Colors.grey),
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                focusedPinTheme: PinTheme(
+                  width: 50,
+                  height: 56,
+                  textStyle: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.blue.shade400, width: 2),
                   ),
-                  onChanged: (val) {
-                    if (_errorMessage != null) setState(() => _errorMessage = null);
-                  },
                 ),
               ),
               

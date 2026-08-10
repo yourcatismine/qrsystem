@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/report.dart';
 import '../providers/report_provider.dart';
 import '../widgets/custom_svg_loader.dart';
+import '../utils/notification_service.dart';
 
 class ReportFormBottomSheet extends StatefulWidget {
   final String poleId;
@@ -128,9 +129,7 @@ class _ReportFormBottomSheetState extends State<ReportFormBottomSheet> {
         await Provider.of<ReportProvider>(context, listen: false).addReport(report);
         if (mounted) {
           Navigator.pop(context); // Close the bottom sheet
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Report submitted successfully!')),
-          );
+          NotificationService.showSuccess(context, 'Report submitted successfully!');
         }
       } catch (e) {
         if (mounted) {

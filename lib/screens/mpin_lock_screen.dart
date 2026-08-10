@@ -5,7 +5,14 @@ import 'intro_screen.dart';
 import '../widgets/custom_svg_loader.dart';
 
 class MpinLockScreen extends StatefulWidget {
-  const MpinLockScreen({super.key});
+  final String? email;
+  final String? name;
+
+  const MpinLockScreen({
+    super.key,
+    this.email,
+    this.name,
+  });
 
   @override
   State<MpinLockScreen> createState() => _MpinLockScreenState();
@@ -54,31 +61,62 @@ class _MpinLockScreenState extends State<MpinLockScreen> {
     await Future.delayed(const Duration(milliseconds: 300));
     
     final user = Supabase.instance.client.auth.currentUser;
-    final metadata = user?.userMetadata ?? {};
-    final correctMpin = metadata['mpin'] as String?;
+    final isLoginMode = widget.email != null;
 
-    if (mounted) {
-      setState(() => _isLoading = false);
-      
-      if (correctMpin == mpin) {
-        // Success! Go to Home Screen
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
+    if (isLoginMode) {
+      try {
+        await Supabase.instance.client.auth.signInWithPassword(
+          email: widget.email,
+          password: mpin,
         );
-      } else {
-        // Failed
-        _mpinController.clear();
-        setState(() {
-          _errorMessage = "Incorrect MPIN. Please try again.";
-        });
-        _mpinFocusNode.requestFocus();
+        
+        if (mounted) {
+          setState(() => _isLoading = false);
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const HomeScreen()),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          _mpinController.clear();
+          setState(() {
+            _isLoading = false;
+            _errorMessage = "Incorrect MPIN. Please try again.";
+          });
+          _mpinFocusNode.requestFocus();
+        }
+      }
+    } else {
+      final metadata = user?.userMetadata ?? {};
+      final correctMpin = metadata['mpin'] as String?;
+
+      if (mounted) {
+        setState(() => _isLoading = false);
+        
+        if (correctMpin == mpin) {
+          // Success! Go to Home Screen
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const HomeScreen()),
+          );
+        } else {
+          // Failed
+          _mpinController.clear();
+          setState(() {
+            _errorMessage = "Incorrect MPIN. Please try again.";
+          });
+          _mpinFocusNode.requestFocus();
+        }
       }
     }
   }
 
   Future<void> _switchAccount() async {
-    await Supabase.instance.client.auth.signOut();
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user != null) {
+      await Supabase.instance.client.auth.signOut();
+    }
     if (mounted) {
       Navigator.pushAndRemoveUntil(
         context,
@@ -92,7 +130,7 @@ class _MpinLockScreenState extends State<MpinLockScreen> {
     final user = Supabase.instance.client.auth.currentUser;
     final metadata = user?.userMetadata ?? {};
     String phone = metadata['phone'] as String? ?? '';
-    String email = user?.email ?? '';
+    String email = widget.email ?? user?.email ?? '';
 
     if (phone.isNotEmpty && phone.length >= 10) {
       // e.g., 09171234567 -> 09 17 *** 4567
@@ -112,7 +150,7 @@ class _MpinLockScreenState extends State<MpinLockScreen> {
   @override
   Widget build(BuildContext context) {
     final user = Supabase.instance.client.auth.currentUser;
-    final firstName = user?.userMetadata?['first_name'] as String? ?? 'User';
+    final firstName = widget.name ?? user?.userMetadata?['first_name'] as String? ?? 'User';
 
     return Scaffold(
       backgroundColor: Colors.white,

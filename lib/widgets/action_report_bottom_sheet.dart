@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/report.dart';
 import '../providers/report_provider.dart';
+import '../utils/notification_service.dart';
 
 class ActionReportBottomSheet extends StatefulWidget {
   final Report report;
@@ -43,9 +44,7 @@ class _ActionReportBottomSheetState extends State<ActionReportBottomSheet> {
     
     // For approval, ensure a unit is selected
     if (widget.isApprove && _selectedUnit == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please assign a unit.')),
-      );
+      NotificationService.showError(context, 'Please assign a unit.');
       return;
     }
 
@@ -64,19 +63,12 @@ class _ActionReportBottomSheetState extends State<ActionReportBottomSheet> {
       );
 
       if (mounted) {
-        Navigator.pop(context); // Close bottom sheet
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(widget.isApprove ? 'Report Approved & Unit Assigned!' : 'Report Declined.'),
-            backgroundColor: widget.isApprove ? Colors.green : Colors.red,
-          ),
-        );
+        Navigator.pop(context, true); // Close bottom sheet and return true
+        NotificationService.showSuccess(context, widget.isApprove ? 'Report Approved & Unit Assigned!' : 'Report Declined.');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        NotificationService.showError(context, 'Error: $e');
         setState(() {
           _isSubmitting = false;
         });

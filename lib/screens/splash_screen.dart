@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'home_screen.dart';
 import 'mpin_lock_screen.dart';
+import 'login_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:math';
 
@@ -74,7 +74,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
         child: _showHome 
             ? (Supabase.instance.client.auth.currentSession != null
                 ? const MpinLockScreen(key: ValueKey('mpin'))
-                : const HomeScreen(key: ValueKey('home')))
+                : const LoginScreen(key: ValueKey('login')))
             : _buildSplash(),
       ),
     );
@@ -103,8 +103,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 class _ColoredSpinnerPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final double strokeWidth = 10.0;
-    final Rect rect = Offset(strokeWidth / 2, strokeWidth / 2) & 
+    const double strokeWidth = 10.0;
+    final Rect rect = const Offset(strokeWidth / 2, strokeWidth / 2) & 
                       Size(size.width - strokeWidth, size.height - strokeWidth);
                       
     final Paint paint = Paint()

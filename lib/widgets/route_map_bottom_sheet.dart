@@ -56,7 +56,7 @@ class _RouteMapBottomSheetState extends State<RouteMapBottomSheet> {
       }
 
       // 2. Get location
-      Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+      Position position = await Geolocator.getCurrentPosition(locationSettings: const LocationSettings(accuracy: LocationAccuracy.high));
       final start = LatLng(position.latitude, position.longitude);
       
       setState(() {

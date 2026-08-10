@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import 'report_form_screen.dart';
+
 
 class ScannerScreen extends StatefulWidget {
   const ScannerScreen({super.key});
@@ -12,6 +12,7 @@ class ScannerScreen extends StatefulWidget {
 class _ScannerScreenState extends State<ScannerScreen> {
   final MobileScannerController controller = MobileScannerController();
   bool isNavigating = false;
+  bool isErrorShowing = false;
 
   @override
   void dispose() {
@@ -30,21 +31,36 @@ class _ScannerScreenState extends State<ScannerScreen> {
           MobileScanner(
             controller: controller,
             onDetect: (capture) {
-              if (isNavigating) return;
+              if (isNavigating || isErrorShowing) return;
               
               final List<Barcode> barcodes = capture.barcodes;
               if (barcodes.isNotEmpty) {
                 final barcode = barcodes.first;
                 final String? rawValue = barcode.rawValue;
                 
-                if (rawValue != null) {
+                if (rawValue != null && rawValue.startsWith('QRSYS_POLE_')) {
                   setState(() {
                     isNavigating = true;
                   });
-                  print("Scanned QR Code: $rawValue");
+                  final poleId = rawValue.replaceFirst('QRSYS_POLE_', '');
+                  debugPrint('Found pole: $poleId');
                   
                   // Return the scanned pole ID back to the HomeScreen
-                  Navigator.pop(context, rawValue);
+                  Navigator.pop(context, poleId);
+                } else if (rawValue != null) {
+                   setState(() {
+                     isErrorShowing = true;
+                   });
+                   ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Invalid QR Code. Please scan an official QR code.'),
+                        duration: Duration(seconds: 2),
+                      ),
+                   );
+                   // Add a short delay before allowing another scan attempt
+                   Future.delayed(const Duration(seconds: 3), () {
+                     if (mounted) setState(() => isErrorShowing = false);
+                   });
                 }
               }
             },

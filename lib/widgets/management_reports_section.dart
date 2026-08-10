@@ -4,10 +4,11 @@ import 'package:provider/provider.dart';
 import '../models/report.dart';
 import '../providers/report_provider.dart';
 import '../screens/reports_list_screen.dart';
+import '../screens/report_details_screen.dart';
 import 'route_map_bottom_sheet.dart';
 import 'action_report_bottom_sheet.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
+import '../utils/notification_service.dart';
 class ManagementReportsSection extends StatelessWidget {
   const ManagementReportsSection({super.key});
 
@@ -138,18 +139,26 @@ class _ManagementReportCard extends StatelessWidget {
         return;
       }
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Invalid location data.')),
-    );
+    NotificationService.showError(context, 'Invalid location data.');
   }
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12.0),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ReportDetailsScreen(report: report),
+          ),
+        );
+      },
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 12.0),
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -234,8 +243,9 @@ class _ManagementReportCard extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
 
 class ReporterInfoWidget extends StatefulWidget {

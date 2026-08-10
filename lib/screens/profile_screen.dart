@@ -2,9 +2,10 @@ import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:image_picker/image_picker.dart';
-import 'home_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../utils/notification_service.dart';
+import '../widgets/account_switcher_bottom_sheet.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -88,20 +89,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       );
       
+      // Sync with users table for the ReporterInfoWidget to read
+      await Supabase.instance.client
+          .from('users')
+          .update({'avatar_url': publicUrl})
+          .eq('id', user.id);
+      
       setState(() {
         avatarUrl = publicUrl;
       });
       
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile picture updated successfully!')),
-        );
+        NotificationService.showSuccess(context, 'Profile picture updated successfully!');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error uploading image: $e')),
-        );
+        NotificationService.showError(context, 'Error uploading image: $e');
       }
     } finally {
       setState(() {
@@ -133,16 +136,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.exit_to_app_rounded, color: Colors.redAccent),
-            onPressed: () async {
-              await Supabase.instance.client.auth.signOut();
-              if (context.mounted) {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => const HomeScreen()),
-                  (route) => false,
-                );
-              }
+            icon: const Icon(Icons.switch_account, color: Colors.blue),
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (context) => const AccountSwitcherBottomSheet(),
+              );
             },
           ),
           const SizedBox(width: 8),
@@ -493,11 +494,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ],
                 const SizedBox(height: 12),
-                ...numbers.map((num) => Padding(
+                ...numbers.map((phone) => Padding(
                   padding: const EdgeInsets.only(bottom: 8.0),
                   child: InkWell(
                     onTap: () async {
-                      final cleanNum = num['number']!.replaceAll(RegExp(r'[^0-9]'), '');
+                      final cleanNum = phone['number']!.replaceAll(RegExp(r'[^0-9]'), '');
                       final Uri url = Uri.parse('tel:$cleanNum');
                       if (await canLaunchUrl(url)) {
                         await launchUrl(url);
@@ -514,14 +515,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               style: const TextStyle(fontSize: 14),
                               children: [
                                 TextSpan(
-                                  text: '${num['label']}: ',
+                                  text: '${phone['label']}: ',
                                   style: TextStyle(
                                     color: Colors.grey.shade700,
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
                                 TextSpan(
-                                  text: num['number'],
+                                  text: phone['number'],
                                   style: TextStyle(
                                     color: Colors.blue.shade700,
                                     fontWeight: FontWeight.bold,
