@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/report.dart';
 import '../providers/report_provider.dart';
 import '../utils/notification_service.dart';
@@ -21,17 +22,36 @@ class ActionReportBottomSheet extends StatefulWidget {
 class _ActionReportBottomSheetState extends State<ActionReportBottomSheet> {
   final _formKey = GlobalKey<FormState>();
   final _remarksController = TextEditingController();
-  
-  String? _selectedUnit;
-  bool _isSubmitting = false;
 
-  final List<String> _units = [
-    'Maintenance Team Alpha',
-    'Maintenance Team Bravo',
-    'Electrical Unit A',
-    'Contractor Team C',
-    'Emergency Response',
-  ];
+  String? _selectedTeamId;   // stores the team UUID
+  String? _selectedTeamName; // stores the team name for display
+  bool _isSubmitting = false;
+  bool _isLoadingTeams = true;
+  List<Map<String, dynamic>> _teams = [];
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.isApprove) _loadTeams();
+  }
+
+  Future<void> _loadTeams() async {
+    try {
+      final data = await Supabase.instance.client
+          .from('teams')
+          .select('id, name')
+          .order('name', ascending: true);
+      if (mounted) {
+        setState(() {
+          _teams = List<Map<String, dynamic>>.from(data as List);
+          _isLoadingTeams = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Failed to load teams: $e');
+      if (mounted) setState(() => _isLoadingTeams = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -42,9 +62,9 @@ class _ActionReportBottomSheetState extends State<ActionReportBottomSheet> {
   Future<void> _submitAction() async {
     if (!_formKey.currentState!.validate()) return;
     
-    // For approval, ensure a unit is selected
-    if (widget.isApprove && _selectedUnit == null) {
-      NotificationService.showError(context, 'Please assign a unit.');
+    // For approval, ensure a team is selected
+    if (widget.isApprove && _selectedTeamId == null) {
+      NotificationService.showError(context, 'Please assign a team.');
       return;
     }
 
@@ -53,12 +73,12 @@ class _ActionReportBottomSheetState extends State<ActionReportBottomSheet> {
     });
 
     try {
-      final newStatus = widget.isApprove ? ReportStatus.approved : ReportStatus.declined;
+      final newStatus = widget.isApprove ? ReportStatus.ongoing : ReportStatus.declined;
       
       await Provider.of<ReportProvider>(context, listen: false).updateReportStatus(
         widget.report.id!,
         newStatus,
-        assignedUnit: widget.isApprove ? _selectedUnit : null,
+        assignedUnit: widget.isApprove ? _selectedTeamName : null,
         managementRemarks: _remarksController.text.trim(),
       );
 
@@ -126,37 +146,63 @@ class _ActionReportBottomSheetState extends State<ActionReportBottomSheet> {
             // Dropdown (Only for Approve)
             if (widget.isApprove) ...[
               const Text(
-                'Assign Unit',
+                'Assign Team',
                 style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
               ),
               const SizedBox(height: 8),
-              DropdownButtonFormField<String>(
-                value: _selectedUnit,
-                hint: const Text('Select a unit to dispatch...'),
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  filled: true,
-                  fillColor: Colors.grey.shade50,
+              if (_isLoadingTeams)
+                Container(
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: Center(
+                    child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                      SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.green.shade700)),
+                      const SizedBox(width: 10),
+                      Text('Loading teams...', style: TextStyle(color: Colors.grey.shade500, fontSize: 14)),
+                    ]),
+                  ),
+                )
+              else if (_teams.isEmpty)
+                Container(
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.orange.shade200),
+                  ),
+                  child: Center(
+                    child: Text('No teams found — create one in Assigns first',
+                        style: TextStyle(color: Colors.orange.shade700, fontSize: 13)),
+                  ),
+                )
+              else
+                DropdownButtonFormField<String>(
+                  value: _selectedTeamId,
+                  hint: const Text('Select a team to assign...'),
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    filled: true,
+                    fillColor: Colors.grey.shade50,
+                  ),
+                  items: _teams.map((team) {
+                    return DropdownMenuItem<String>(
+                      value: team['id'] as String,
+                      child: Text(team['name'] as String),
+                    );
+                  }).toList(),
+                  onChanged: (val) {
+                    setState(() {
+                      _selectedTeamId = val;
+                      _selectedTeamName = _teams.firstWhere((t) => t['id'] == val)['name'] as String;
+                    });
+                  },
+                  validator: (val) => (val == null || val.isEmpty) ? 'Please assign a team' : null,
                 ),
-                items: _units.map((unit) {
-                  return DropdownMenuItem(
-                    value: unit,
-                    child: Text(unit),
-                  );
-                }).toList(),
-                onChanged: (val) {
-                  setState(() {
-                    _selectedUnit = val;
-                  });
-                },
-                validator: (val) {
-                  if (val == null || val.isEmpty) {
-                    return 'Please assign a unit';
-                  }
-                  return null;
-                },
-              ),
               const SizedBox(height: 20),
             ],
 

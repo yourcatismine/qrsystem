@@ -11,7 +11,9 @@ enum ReportStatus {
   inspected,
   resolved,
   approved,
-  declined
+  declined,
+  ongoing,
+  arrived
 }
 
 class Report {

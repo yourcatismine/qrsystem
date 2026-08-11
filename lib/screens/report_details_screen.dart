@@ -3,10 +3,13 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:provider/provider.dart';
 import '../models/report.dart';
+import '../providers/report_provider.dart';
 import '../widgets/management_reports_section.dart'; // For ReporterInfoWidget
 import '../widgets/route_map_bottom_sheet.dart';
 import '../widgets/action_report_bottom_sheet.dart';
+import '../widgets/live_tracker_map.dart';
 
 class ReportDetailsScreen extends StatelessWidget {
   final Report report;
@@ -38,7 +41,7 @@ class ReportDetailsScreen extends StatelessWidget {
   }
 
   Future<void> _showActionDrawer(BuildContext context, bool isApprove) async {
-    final result = await showModalBottomSheet<bool>(
+    await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
@@ -46,18 +49,21 @@ class ReportDetailsScreen extends StatelessWidget {
       ),
       builder: (ctx) => ActionReportBottomSheet(report: report, isApprove: isApprove),
     );
-    
-    if (result == true && context.mounted) {
-      Navigator.pop(context);
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Parse location for the static map preview
-    double? lat;
-    double? lng;
-    if (report.location.isNotEmpty) {
+    return Consumer<ReportProvider>(
+      builder: (context, provider, _) {
+        final latestReport = provider.reports.firstWhere(
+          (r) => r.id == report.id,
+          orElse: () => report,
+        );
+
+        // Parse location for the static map preview
+        double? lat;
+        double? lng;
+        if (latestReport.location.isNotEmpty) {
       final parts = report.location.split(',');
       if (parts.length == 2) {
         lat = double.tryParse(parts[0]);
@@ -65,23 +71,30 @@ class ReportDetailsScreen extends StatelessWidget {
       }
     }
 
-    final issueTitle = report.issueType == IssueType.brokenLight 
-        ? 'Broken Light' 
-        : report.issueType == IssueType.noStreetLight 
-            ? 'No Street Light' 
-            : 'Other Issue';
+        final issueTitle = latestReport.issueType == IssueType.brokenLight 
+            ? 'Broken Light' 
+            : latestReport.issueType == IssueType.noStreetLight 
+                ? 'No Street Light' 
+                : 'Other Issue';
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Report Details'),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 0,
-      ),
-      body: Column(
-        children: [
-          // Map Preview Header
-          if (lat != null && lng != null)
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Report Details'),
+            backgroundColor: Colors.white,
+            foregroundColor: Colors.black,
+            elevation: 0,
+          ),
+          body: Column(
+            children: [
+              // Map Preview Header
+              if ((latestReport.status == ReportStatus.ongoing || latestReport.status == ReportStatus.arrived) && latestReport.assignedUnit != null)
+                LiveTrackerMap(
+                  reportId: latestReport.id!,
+                  teamName: latestReport.assignedUnit!,
+                  reportLocationString: latestReport.location, // In future, use lat/lng from DB
+                  initialStatus: latestReport.status,
+                )
+          else if (lat != null && lng != null)
             SizedBox(
               height: 200,
               width: double.infinity,
@@ -132,23 +145,31 @@ class ReportDetailsScreen extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: report.status == ReportStatus.pending 
+                          color: latestReport.status == ReportStatus.pending 
                               ? Colors.orange.shade100 
-                              : report.status == ReportStatus.approved 
-                                  ? Colors.green.shade100 
-                                  : Colors.red.shade100,
+                              : latestReport.status == ReportStatus.ongoing
+                                  ? Colors.blue.shade100
+                                  : latestReport.status == ReportStatus.arrived
+                                      ? Colors.purple.shade100
+                                      : latestReport.status == ReportStatus.approved 
+                                          ? Colors.green.shade100 
+                                          : Colors.red.shade100,
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
-                          report.status.name.toUpperCase(),
+                          latestReport.status.name.toUpperCase(),
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
-                            color: report.status == ReportStatus.pending 
+                            color: latestReport.status == ReportStatus.pending 
                                 ? Colors.orange.shade900 
-                                : report.status == ReportStatus.approved 
-                                    ? Colors.green.shade900 
-                                    : Colors.red.shade900,
+                                : latestReport.status == ReportStatus.ongoing
+                                    ? Colors.blue.shade900
+                                    : latestReport.status == ReportStatus.arrived
+                                        ? Colors.purple.shade900
+                                        : latestReport.status == ReportStatus.approved 
+                                            ? Colors.green.shade900 
+                                            : Colors.red.shade900,
                           ),
                         ),
                       ),
@@ -156,14 +177,14 @@ class ReportDetailsScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Reported on ${report.timestamp.month}/${report.timestamp.day}/${report.timestamp.year} at ${report.timestamp.hour}:${report.timestamp.minute.toString().padLeft(2, '0')}',
+                    'Reported on ${latestReport.timestamp.month}/${latestReport.timestamp.day}/${latestReport.timestamp.year} at ${latestReport.timestamp.hour}:${latestReport.timestamp.minute.toString().padLeft(2, '0')}',
                     style: TextStyle(color: Colors.grey.shade600),
                   ),
                   const SizedBox(height: 24),
                   
                   const Text('Reporter', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  ReporterInfoWidget(userId: report.userId),
+                  ReporterInfoWidget(userId: latestReport.userId),
                   
                   const SizedBox(height: 24),
                   const Text('Pole Information', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
@@ -172,7 +193,7 @@ class ReportDetailsScreen extends StatelessWidget {
                     children: [
                       const Icon(Icons.qr_code, color: Colors.grey),
                       const SizedBox(width: 8),
-                      Text(report.poleId, style: const TextStyle(fontSize: 16)),
+                      Text(latestReport.poleId, style: const TextStyle(fontSize: 16)),
                     ],
                   ),
                   
@@ -180,11 +201,11 @@ class ReportDetailsScreen extends StatelessWidget {
                   const Text('Description', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   Text(
-                    report.description,
+                    latestReport.description,
                     style: const TextStyle(fontSize: 16, height: 1.5),
                   ),
                   
-                  if (report.assignedUnit != null) ...[
+                  if (latestReport.assignedUnit != null) ...[
                     const SizedBox(height: 24),
                     const Text('Assigned Unit', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
@@ -199,13 +220,13 @@ class ReportDetailsScreen extends StatelessWidget {
                         children: [
                           const Icon(Icons.engineering, color: Colors.blue),
                           const SizedBox(width: 8),
-                          Text(report.assignedUnit!, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
+                          Text(latestReport.assignedUnit!, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
                         ],
                       ),
                     ),
                   ],
                   
-                  if (report.managementRemarks != null && report.managementRemarks!.isNotEmpty) ...[
+                  if (latestReport.managementRemarks != null && latestReport.managementRemarks!.isNotEmpty) ...[
                     const SizedBox(height: 24),
                     const Text('Management Remarks', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
@@ -218,7 +239,7 @@ class ReportDetailsScreen extends StatelessWidget {
                         border: Border.all(color: Colors.grey.shade300),
                       ),
                       child: Text(
-                        report.managementRemarks!,
+                        latestReport.managementRemarks!,
                         style: const TextStyle(fontStyle: FontStyle.italic),
                       ),
                     ),
@@ -231,7 +252,7 @@ class ReportDetailsScreen extends StatelessWidget {
           ),
           
           // Action Bottom Bar
-          if (Supabase.instance.client.auth.currentUser?.id != report.userId)
+          if (Supabase.instance.client.auth.currentUser?.id != latestReport.userId)
             Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             decoration: BoxDecoration(
@@ -273,7 +294,7 @@ class ReportDetailsScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (report.status == ReportStatus.pending) ...[
+                  if (latestReport.status == ReportStatus.pending) ...[
                     const SizedBox(width: 12),
                     Expanded(
                       child: InkWell(
@@ -341,6 +362,8 @@ class ReportDetailsScreen extends StatelessWidget {
           )
         ],
       ),
+    );
+      },
     );
   }
 }

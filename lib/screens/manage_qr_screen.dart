@@ -252,9 +252,32 @@ class _ManageQrScreenState extends State<ManageQrScreen> {
                                   gapless: true,
                                 );
                                 
-                                final picData = await painter.toImageData(2048, format: ui.ImageByteFormat.png);
-                                if (picData != null) {
-                                  final buffer = picData.buffer.asUint8List();
+                                // Draw QR onto a white canvas so background is not transparent
+                                const imageSize = 2048.0;
+                                const padding = 64.0;
+                                const totalSize = imageSize + padding * 2;
+                                
+                                final recorder = ui.PictureRecorder();
+                                final canvas = Canvas(recorder);
+                                
+                                // Draw white background
+                                canvas.drawRect(
+                                  Rect.fromLTWH(0, 0, totalSize, totalSize),
+                                  Paint()..color = Colors.white,
+                                );
+                                
+                                // Draw QR code in the center with padding
+                                canvas.save();
+                                canvas.translate(padding, padding);
+                                painter.paint(canvas, const Size(imageSize, imageSize));
+                                canvas.restore();
+                                
+                                final picture = recorder.endRecording();
+                                final img = await picture.toImage(totalSize.toInt(), totalSize.toInt());
+                                final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
+                                
+                                if (byteData != null) {
+                                  final buffer = byteData.buffer.asUint8List();
                                   
                                   final result = await ImageGallerySaver.saveImage(
                                     buffer,
@@ -267,7 +290,7 @@ class _ManageQrScreenState extends State<ManageQrScreen> {
                                     if (result != null && result['isSuccess'] == true) {
                                       NotificationService.showSuccess(context, 'QR Code saved to gallery!');
                                     } else {
-                                      NotificationService.showError(context, 'Failed to save image. Please allow storage permissions.');
+                                      NotificationService.showError(context, 'Failed to save. Check storage permissions.');
                                     }
                                   }
                                 }

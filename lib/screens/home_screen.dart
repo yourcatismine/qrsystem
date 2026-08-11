@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'scanner_screen.dart';
 import 'reports_list_screen.dart';
 import 'manage_qr_screen.dart';
+import 'teams_screen.dart';
 import '../widgets/report_form_bottom_sheet.dart';
 import 'intro_screen.dart';
 
@@ -140,7 +141,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
-            Expanded(child: _buildBottomNavItem("assets/icons/nav_mobile_id.svg", "Mobile ID", 2)),
+            Expanded(
+              child: _userRole == 'management'
+                ? _buildBottomNavItem("assets/icons/nav_teams.svg", "Teams", 2)
+                : _buildBottomNavItem("assets/icons/nav_mobile_id.svg", "Mobile ID", 2)
+            ),
             Expanded(
               child: _userRole == 'management'
                 ? _buildBottomNavItem("assets/icons/manage_qr.svg", "Manage QR", 3)
@@ -225,6 +230,9 @@ class _HomeScreenState extends State<HomeScreen> {
       onTap: () {
         if (label == 'Manage QR') {
           Navigator.push(context, MaterialPageRoute(builder: (context) => const ManageQrScreen()));
+          return;
+        } else if (label == 'Teams') {
+          Navigator.push(context, MaterialPageRoute(builder: (context) => const TeamsScreen()));
           return;
         } else if (label == 'Account') {
           Navigator.push(context, MaterialPageRoute(builder: (context) => const ProfileScreen()));

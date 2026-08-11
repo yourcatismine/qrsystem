@@ -397,6 +397,16 @@ class _ReportsListScreenState extends State<ReportsListScreen> {
         bgColor = const Color(0xFFD1FAE5);
         text = 'Approved';
         break;
+      case ReportStatus.ongoing:
+        color = const Color(0xFF3B82F6);
+        bgColor = const Color(0xFFDBEAFE);
+        text = 'Ongoing';
+        break;
+      case ReportStatus.arrived:
+        color = const Color(0xFF8B5CF6);
+        bgColor = const Color(0xFFEDE9FE);
+        text = 'Arrived';
+        break;
       case ReportStatus.declined:
         color = const Color(0xFFEF4444);
         bgColor = const Color(0xFFFEE2E2);
